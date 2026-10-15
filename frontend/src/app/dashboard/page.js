@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
 export default function DashboardPage() {
@@ -16,7 +16,14 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [weatherError, setWeatherError] = useState("");
 
-  async function loadWeather(selectedCity) {
+  const redirectToLogin = useCallback(() => {
+    setUser(null);
+    setError("");
+    setLoading(true);
+    router.replace("/login");
+  }, [router]);
+
+  const loadWeather = useCallback(async (selectedCity) => {
     setWeatherLoading(true);
     setWeatherError("");
 
@@ -24,35 +31,55 @@ export default function DashboardPage() {
       const dashboardData = await apiFetch(`/dashboard?city=${encodeURIComponent(selectedCity)}`);
       setWeather(dashboardData.weather);
       setCity(selectedCity);
+      return true;
     } catch (err) {
-      setWeatherError(err.message);
+      if (err.status === 401) {
+        redirectToLogin();
+        return false;
+      } else {
+        setWeatherError(err.message);
+      }
+      return true;
     } finally {
       setWeatherLoading(false);
     }
-  }
+  }, [redirectToLogin]);
 
   useEffect(() => {
     async function loadDashboard() {
+      let sessionInvalid = false;
+
       try {
         const userData = await apiFetch("/user");
         setUser(userData.user);
-        await loadWeather("London");
+        sessionInvalid = !(await loadWeather("London"));
       } catch (err) {
-        setError(err.message);
+        if (err.status === 401) {
+          redirectToLogin();
+          sessionInvalid = true;
+        } else {
+          setError(err.message);
+        }
       } finally {
-        setLoading(false);
+        if (!sessionInvalid) {
+          setLoading(false);
+        }
       }
     }
 
     loadDashboard();
-  }, []);
+  }, [loadWeather, redirectToLogin]);
 
   async function handleLogout() {
     try {
       await apiFetch("/logout", { method: "POST" });
-      router.push("/login");
+      router.replace("/login");
     } catch (err) {
-      setError(err.message);
+      if (err.status === 401) {
+        redirectToLogin();
+      } else {
+        setError(err.message);
+      }
     }
   }
 

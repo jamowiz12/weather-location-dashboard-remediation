@@ -1,5 +1,13 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
+export class ApiError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 function getXsrfToken() {
   if (typeof document === "undefined") {
     return "";
@@ -44,7 +52,7 @@ export async function apiFetch(path, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.message || "Request failed.");
+    throw new ApiError(response.status, data.message || "Request failed.");
   }
 
   return data;
