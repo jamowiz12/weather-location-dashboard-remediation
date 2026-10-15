@@ -24,34 +24,43 @@ For production, the frontend must call the deployed backend URL instead of `http
 
 ## Backend deployment
 
-- Root directory: `backend`
-- Runtime requirement: PHP 8.2+
-- Typical Laravel startup command: `php artisan serve` for evaluation, or equivalent host-managed process for production
-- Required backend variables:
-	- `APP_ENV=production`
-	- `APP_DEBUG=false`
-	- `APP_URL=https://<your-backend-domain>`
-	- `FRONTEND_URL=https://<your-frontend-domain>`
-	- `SANCTUM_STATEFUL_DOMAINS=<frontend-domain>`
-	- `SESSION_SECURE_COOKIE=true`
-	- `OPENWEATHER_API_KEY`
-	- `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, and `MAIL_FROM_NAME` for SMTP or the selected mail provider
-	- A stable `APP_KEY`; encrypted MFA secrets depend on it. Use `APP_PREVIOUS_KEYS` only for a planned key rotation.
-	- `DB_CONNECTION=pgsql` for PostgreSQL
-	- `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
-	- `DB_SSLMODE=require` when required by the PostgreSQL provider
+### Render Docker service
+
+The repository includes a Render Blueprint at `render.yaml` and a production Docker image in `backend/Dockerfile`. In Render, create a Blueprint from this GitHub repository and review the service named `weather-location-dashboard-api`. If creating a Web Service manually instead, select **Docker**, set the Dockerfile path to `backend/Dockerfile`, set the Docker build context to `backend`, and set the health-check path to `/api/health`.
+
+The image uses PHP 8.2 with Apache, Composer production dependencies, `pdo_pgsql`, cURL, and mbstring. Apache serves Laravel's `public/` directory and binds to Render's runtime `PORT` (defaulting to `10000` only for local container runs). HTTPS is terminated by Render; outbound cURL certificate verification stays enabled with system CA certificates. The image excludes all `.env*` files, Composer auth files, local `vendor/`, and local storage. The startup script refuses to start without `APP_KEY`, with non-production `APP_ENV`, or with `APP_DEBUG` enabled. It does not generate an application key or run database migrations.
+
+The Blueprint prompts for values marked `sync: false`. Add them through Render's secure environment-variable form; never add actual values to `render.yaml`, Docker build arguments, or the repository. Required production configuration includes:
+
+- `APP_ENV=production`
+- `APP_DEBUG=false`
+- `APP_URL=https://<your-backend-domain>`
+- `FRONTEND_URL=https://<your-frontend-domain>`
+- `APP_KEY=<the existing backend APP_KEY; preserve it for encrypted MFA data>`
+- `SANCTUM_STATEFUL_DOMAINS=<frontend-hostname, without scheme>`
+- `SESSION_DOMAIN=.<shared-custom-domain>`
+- `SESSION_DRIVER=database`
+- `SESSION_SECURE_COOKIE=true`
+- `SESSION_SAME_SITE=lax`
+- `DB_CONNECTION=pgsql`
+- `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
+- `DB_SSLMODE=require`
+- `OPENWEATHER_API_KEY`
+
+Set the Supabase host, database, username, password, and port from its connection details. Use a supported connection mode/port and require TLS with `DB_SSLMODE=require`. The container has PostgreSQL PDO support. Do not change the schema or run migrations as part of the image startup. Check `php artisan migrate:status` against the intended production database first; take a backup and review every pending migration. Only then, run `php artisan migrate --force` as a deliberate one-off operation after approval.
+
+Configure SMTP separately in Render (`MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, and `MAIL_FROM_NAME`) before relying on password-reset delivery. Keep the mail password secret.
 
 ## Database readiness
 
-The example environment uses SQLite for local development. The current workspace is configured for PostgreSQL; a read-only connection probe and migration-status check succeeded. This does not verify the database credentials configured on a separate production host. Set `DB_CONNECTION=pgsql` and the provider's `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, and SSL mode in the backend environment.
+The example environment uses SQLite for local development. The current workspace is configured for PostgreSQL; a read-only connection probe and migration-status check succeeded. This does not verify the database credentials configured on a separate production host.
 
 Production steps:
 
-1. Create a PostgreSQL database in the selected provider.
-2. Set the backend database variables in the host environment.
-3. Back up the database and review pending migrations, including the migration that encrypts existing MFA secrets.
-4. Run `php artisan migrate --force` only after confirming the provider and credentials are correct and receiving explicit approval.
-5. Ensure the application is not pointed at any shared or staging database without authorization.
+1. Confirm the intended Supabase project and database before copying its connection settings to Render.
+2. Back up the database and review pending migrations, including the migration that encrypts existing MFA secrets.
+3. Run `php artisan migrate --force` only as a separately approved one-off action after confirming the provider and credentials are correct.
+4. Ensure the application is not pointed at any shared or staging database without authorization.
 
 ## CORS and cookie requirements
 
@@ -59,6 +68,7 @@ Production steps:
 - `SANCTUM_STATEFUL_DOMAINS` must include the production domain used by the frontend.
 - Sanctum session authentication requires the frontend and API to share a site. Prefer custom sibling domains such as `app.example.com` and `api.example.com`; set `SESSION_DOMAIN=.example.com`, include the frontend host in `SANCTUM_STATEFUL_DOMAINS`, allow its exact HTTPS origin in CORS, and use `SESSION_SECURE_COOKIE=true` with `SESSION_SAME_SITE=lax`. A Vercel default domain paired with an unrelated backend-host domain is cross-site and browser cookie restrictions can prevent login from working reliably.
 - `FRONTEND_URL` is used to create password-reset links and is included in the CORS origin allowlist.
+- Deploy the backend first. After Render assigns its URL, set `APP_URL`; once the Vercel URL and custom shared domain are known, set `FRONTEND_URL`, `SANCTUM_STATEFUL_DOMAINS`, `SESSION_DOMAIN`, and the exact CORS origin, then redeploy and verify browser cookie login over HTTPS.
 
 ## Health and verification
 
