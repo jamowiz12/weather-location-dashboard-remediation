@@ -1,0 +1,41 @@
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Environment files
+**/.env
+**/.env.*
+!**/.env.example
+
+# Credentials and private keys
+**/auth.json
+**/credentials.*
+**/secrets.*
+**/*.pem
+**/*.key
+
+# Laravel / PHP
+backend/vendor/
+backend/node_modules/
+backend/storage/*.key
+backend/storage/app/
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/bootstrap/cache/*
+backend/public/hot
+
+# Build and tooling artifacts
+.vercel/
+**/build/
+**/dist/
+**/out/
+coverage/
+.phpunit.result.cache
+
+# General
+.DS_Store
+npm-debug.log*
+*.log
+.git

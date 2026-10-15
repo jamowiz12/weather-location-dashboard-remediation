@@ -1,0 +1,9 @@
+flowchart LR
+    Browser[Browser] -->|Next.js App Router| Frontend[frontend/ Next.js]
+    Frontend -->|CSRF-protected JSON and session cookies| API[backend/ Laravel API]
+    API -->|Sanctum stateful authentication and pending MFA| Session[(Laravel session store)]
+    API -->|Eloquent migrations| LocalDB[(SQLite local)]
+    API -->|Eloquent migrations when configured| HostedDB[(PostgreSQL / Supabase)]
+    API -->|HTTPS request with backend-only key| Weather[Weather provider]
+    Browser -->|Restricted public embed key| Maps[Google Maps Embed]
+    API -->|Configured transport| Mail[Password reset email]
