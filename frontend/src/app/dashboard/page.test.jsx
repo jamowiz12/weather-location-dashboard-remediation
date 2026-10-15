@@ -84,4 +84,24 @@ describe("DashboardPage authentication guard", () => {
     expect(screen.getByText("Loading dashboard...")).toBeTruthy();
     expect(screen.queryByText(/Welcome,/)).toBeNull();
   });
+
+  it("shows an invalid-city weather response", async () => {
+    apiFetch.mockImplementation(async (path) => {
+      if (path === "/user") {
+        return { user: { name: "Weather User", email: "weather@example.com" } };
+      }
+
+      return {
+        weather: {
+          status: "invalid_city",
+          city: "NoSuchCity",
+          message: "City not found. Check the spelling and try again.",
+        },
+      };
+    });
+
+    render(<DashboardPage />);
+
+    expect((await screen.findByRole("status")).textContent).toBe("City not found. Check the spelling and try again.");
+  });
 });

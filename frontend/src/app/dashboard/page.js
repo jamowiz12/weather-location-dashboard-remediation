@@ -174,7 +174,7 @@ export default function DashboardPage() {
               <button type="submit" disabled={weatherLoading} className="rounded-xl bg-cyan-500 px-4 py-2 font-medium text-slate-950 hover:bg-cyan-400 disabled:opacity-60">{weatherLoading ? "Loading..." : "Update"}</button>
             </form>
             {weatherError ? <p role="alert" className="mt-3 text-sm text-red-300">{weatherError}</p> : null}
-            {weather?.status === "not_configured" || weather?.status === "error" ? <p role="status" className="mt-3 text-sm text-amber-300">{weather.message}</p> : null}
+            {weather?.status === "not_configured" || weather?.status === "error" || weather?.status === "invalid_city" ? <p role="status" className="mt-3 text-sm text-amber-300">{weather.message}</p> : null}
             <div className="mt-4 space-y-3 text-slate-300">
               <div className="flex justify-between border-b border-slate-800 pb-2"><span>City</span><strong>{weather?.city || city}</strong></div>
               <div className="flex justify-between border-b border-slate-800 pb-2"><span>Country</span><strong>{weather?.country || "--"}</strong></div>

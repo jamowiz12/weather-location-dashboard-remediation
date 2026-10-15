@@ -31,8 +31,14 @@ class WeatherController extends Controller
             ];
         }
 
+        $options = [];
+
+        if (PHP_OS_FAMILY === 'Windows' && defined('CURLSSLOPT_NATIVE_CA') && defined('CURLOPT_SSL_OPTIONS')) {
+            $options['curl'] = [CURLOPT_SSL_OPTIONS => CURLSSLOPT_NATIVE_CA];
+        }
+
         try {
-            $response = Http::timeout(10)->get('https://api.openweathermap.org/data/2.5/weather', [
+            $response = Http::timeout(10)->withOptions($options)->get('https://api.openweathermap.org/data/2.5/weather', [
                 'q' => $city,
                 'appid' => $apiKey,
                 'units' => 'metric',
@@ -41,6 +47,14 @@ class WeatherController extends Controller
             return [
                 'status' => 'error',
                 'message' => 'Weather information could not be loaded. Please try again later.',
+                'city' => $city,
+            ];
+        }
+
+        if ($response->status() === 404) {
+            return [
+                'status' => 'invalid_city',
+                'message' => 'City not found. Check the spelling and try again.',
                 'city' => $city,
             ];
         }

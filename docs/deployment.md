@@ -29,9 +29,11 @@ For production, the frontend must call the deployed backend URL instead of `http
 - Typical Laravel startup command: `php artisan serve` for evaluation, or equivalent host-managed process for production
 - Required backend variables:
 	- `APP_ENV=production`
+	- `APP_DEBUG=false`
 	- `APP_URL=https://<your-backend-domain>`
 	- `FRONTEND_URL=https://<your-frontend-domain>`
 	- `SANCTUM_STATEFUL_DOMAINS=<frontend-domain>`
+	- `SESSION_SECURE_COOKIE=true`
 	- `OPENWEATHER_API_KEY`
 	- `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, and `MAIL_FROM_NAME` for SMTP or the selected mail provider
 	- A stable `APP_KEY`; encrypted MFA secrets depend on it. Use `APP_PREVIOUS_KEYS` only for a planned key rotation.
@@ -41,7 +43,7 @@ For production, the frontend must call the deployed backend URL instead of `http
 
 ## Database readiness
 
-The app uses SQLite for local development. Laravel's PostgreSQL driver is available for Supabase or another PostgreSQL provider, but production connectivity has not been configured or tested. Set `DB_CONNECTION=pgsql` and the provider's `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, and SSL mode in the backend environment.
+The example environment uses SQLite for local development. The current workspace is configured for PostgreSQL; a read-only connection probe and migration-status check succeeded. This does not verify the database credentials configured on a separate production host. Set `DB_CONNECTION=pgsql` and the provider's `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, and SSL mode in the backend environment.
 
 Production steps:
 
@@ -55,7 +57,7 @@ Production steps:
 
 - The backend must allow the deployed frontend origin in `config/cors.php`.
 - `SANCTUM_STATEFUL_DOMAINS` must include the production domain used by the frontend.
-- Cookies must be set with `SameSite` and HTTPS-safe settings appropriate to the production host.
+- Sanctum session authentication requires the frontend and API to share a site. Prefer custom sibling domains such as `app.example.com` and `api.example.com`; set `SESSION_DOMAIN=.example.com`, include the frontend host in `SANCTUM_STATEFUL_DOMAINS`, allow its exact HTTPS origin in CORS, and use `SESSION_SECURE_COOKIE=true` with `SESSION_SAME_SITE=lax`. A Vercel default domain paired with an unrelated backend-host domain is cross-site and browser cookie restrictions can prevent login from working reliably.
 - `FRONTEND_URL` is used to create password-reset links and is included in the CORS origin allowlist.
 
 ## Health and verification

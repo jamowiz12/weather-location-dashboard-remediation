@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -20,7 +21,9 @@ class WeatherApiTest extends TestCase
             ]),
         ]);
 
-        $this->getJson('/api/weather?city=Paris')
+        $response = $this->getJson('/api/weather?city=Paris');
+
+        $response
             ->assertOk()
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('city', 'Paris')
@@ -29,7 +32,50 @@ class WeatherApiTest extends TestCase
 
         Http::assertSent(fn ($request) => str_starts_with($request->url(), 'https://api.openweathermap.org/data/2.5/weather?')
             && $request['q'] === 'Paris'
-            && $request['appid'] === 'test-key');
+            && $request['appid'] === 'test-key'
+            && $request['units'] === 'metric');
+
+        $this->assertStringNotContainsString('test-key', $response->getContent());
+    }
+
+    public function test_weather_endpoint_reports_an_invalid_city_without_exposing_provider_details(): void
+    {
+        config(['services.openweather.key' => 'test-key']);
+        Http::fake([
+            'api.openweathermap.org/*' => Http::response(['message' => 'city not found'], 404),
+        ]);
+
+        $this->getJson('/api/weather?city=NoSuchCity')
+            ->assertOk()
+            ->assertJsonPath('status', 'invalid_city')
+            ->assertJsonPath('message', 'City not found. Check the spelling and try again.')
+            ->assertJsonMissingPath('appid');
+    }
+
+    public function test_weather_endpoint_hides_provider_errors(): void
+    {
+        config(['services.openweather.key' => 'test-key']);
+        Http::fake([
+            'api.openweathermap.org/*' => Http::response(['message' => 'private provider detail'], 500),
+        ]);
+
+        $this->getJson('/api/weather?city=Paris')
+            ->assertOk()
+            ->assertJsonPath('status', 'error')
+            ->assertJsonPath('message', 'Weather information could not be loaded.')
+            ->assertJsonMissing(['message' => 'private provider detail']);
+    }
+
+    public function test_weather_endpoint_handles_connection_failures_without_exposing_details(): void
+    {
+        config(['services.openweather.key' => 'test-key']);
+        Http::fake(fn () => throw new ConnectionException('private transport detail'));
+
+        $this->getJson('/api/weather?city=Paris')
+            ->assertOk()
+            ->assertJsonPath('status', 'error')
+            ->assertJsonPath('message', 'Weather information could not be loaded. Please try again later.')
+            ->assertJsonMissing(['message' => 'private transport detail']);
     }
 
     public function test_weather_endpoint_reports_missing_configuration_without_faking_data(): void
