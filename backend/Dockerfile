@@ -14,13 +14,19 @@ WORKDIR /var/www/html
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 COPY composer.json composer.lock ./
 
-RUN composer install \
-    --no-dev \
-    --no-interaction \
-    --no-progress \
-    --prefer-dist \
-    --no-scripts \
-    -vvv
+
+RUN set -eux; \
+    php -v; \
+    php -m; \
+    composer --version; \
+    composer install \
+      --no-dev \
+      --no-interaction \
+      --no-progress \
+      --prefer-dist \
+      --no-scripts \
+      -vvv 2>&1 || { echo "COMPOSER INSTALL FAILED"; exit 1; }
+
 
 COPY . .
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint
