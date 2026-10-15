@@ -19,7 +19,8 @@ RUN composer install \
     --no-interaction \
     --no-progress \
     --prefer-dist \
-    --no-scripts
+    --no-scripts \
+    -vvv
 
 COPY . .
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint
