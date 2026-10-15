@@ -15,6 +15,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 COPY composer.json composer.lock ./
 
 
+
 RUN set -eux; \
     php -v; \
     php -m; \
@@ -25,7 +26,12 @@ RUN set -eux; \
       --no-progress \
       --prefer-dist \
       --no-scripts \
-      -vvv 2>&1 || { echo "COMPOSER INSTALL FAILED"; exit 1; }
+      -vvv > /tmp/composer-install.log 2>&1 || { \
+        echo "===== COMPOSER ERROR DETAILS ====="; \
+        tail -n 100 /tmp/composer-install.log; \
+        exit 1; \
+      }
+
 
 
 COPY . .
