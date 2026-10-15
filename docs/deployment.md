@@ -26,11 +26,11 @@ For production, the frontend must call the deployed backend URL instead of `http
 
 ### Render Docker service
 
-The repository includes a Render Blueprint at `render.yaml` and a production Docker image in `backend/Dockerfile`. In Render, create a Blueprint from this GitHub repository and review the service named `weather-location-dashboard-api`. If creating a Web Service manually instead, select **Docker**, set the Dockerfile path to `backend/Dockerfile`, set the Docker build context to `backend`, and set the health-check path to `/api/health`.
+The repository includes a Render Blueprint at `render.yaml` and a production Docker image in `backend/Dockerfile`. The Blueprint explicitly sets `plan: free`; this is important because Render's Blueprint specification says a new web service otherwise defaults to the paid `0.5c-512mb` plan. In Render, create a Blueprint from this GitHub repository and review the service named `weather-location-dashboard-api`. If creating a Web Service manually instead, select **Docker**, select the **Free** instance plan, set the Dockerfile path to `backend/Dockerfile`, set the Docker build context to `backend`, and set the health-check path to `/api/health`.
 
 The image uses PHP 8.2 with Apache, Composer production dependencies, `pdo_pgsql`, cURL, and mbstring. Apache serves Laravel's `public/` directory and binds to Render's runtime `PORT` (defaulting to `10000` only for local container runs). HTTPS is terminated by Render; outbound cURL certificate verification stays enabled with system CA certificates. The image excludes all `.env*` files, Composer auth files, local `vendor/`, and local storage. The startup script refuses to start without `APP_KEY`, with non-production `APP_ENV`, or with `APP_DEBUG` enabled. It does not generate an application key or run database migrations.
 
-The Blueprint prompts for values marked `sync: false`. Add them through Render's secure environment-variable form; never add actual values to `render.yaml`, Docker build arguments, or the repository. Required production configuration includes:
+The Blueprint prompts for values marked `sync: false` during initial Blueprint setup. For an existing Blueprint, add or update these secrets in the service's Render Dashboard environment settings. Never add actual values to `render.yaml`, Docker build arguments, or the repository. Required production configuration includes:
 
 - `APP_ENV=production`
 - `APP_DEBUG=false`
@@ -49,7 +49,9 @@ The Blueprint prompts for values marked `sync: false`. Add them through Render's
 
 Set the Supabase host, database, username, password, and port from its connection details. Use a supported connection mode/port and require TLS with `DB_SSLMODE=require`. The container has PostgreSQL PDO support. Do not change the schema or run migrations as part of the image startup. Check `php artisan migrate:status` against the intended production database first; take a backup and review every pending migration. Only then, run `php artisan migrate --force` as a deliberate one-off operation after approval.
 
-Configure SMTP separately in Render (`MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, and `MAIL_FROM_NAME`) before relying on password-reset delivery. Keep the mail password secret.
+The Free web-service plan has documented limits: instances spin down after 15 minutes without inbound traffic, local filesystem changes are ephemeral, and the workspace receives 750 free instance hours per month. Free services can be suspended at usage limits when no payment method is present; do not add a card or upgrade the plan if remaining strictly free. Render's Free Postgres is not used by this service: keep the database on Supabase. Render describes Free instances as suitable for hobby projects and previews, not production applications, so this plan does not provide production availability guarantees. Render's public documentation describes creating Free instances but does not establish whether every account's signup flow will proceed without payment information; if the Dashboard requires a card, stop without entering one.
+
+Render Free web services cannot send outbound traffic on SMTP ports 25, 465, or 587. Standard SMTP password-reset delivery therefore will not work on the Free plan. To deliver reset messages while staying free, use an HTTPS email API with a Laravel-compatible mail transport and keep its API credential in Render's environment settings; otherwise password-reset messages are not deliverable from this service. For a paid SMTP host, do not change plans unless you explicitly choose to leave the free-only constraint.
 
 ## Database readiness
 
