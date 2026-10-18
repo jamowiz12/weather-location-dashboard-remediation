@@ -7,6 +7,7 @@ RUN apt-get update \
     && a2enmod headers rewrite \
     && sed -ri 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf \
     && sed -ri 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf \
+    && apt-mark manual libzip4 \
     && apt-get purge -y --auto-remove libcurl4-openssl-dev libonig-dev libpq-dev libzip-dev \
     && rm -rf /var/lib/apt/lists/*
 
