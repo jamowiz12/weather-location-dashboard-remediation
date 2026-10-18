@@ -1,13 +1,15 @@
 FROM php:8.2-apache-bookworm
 
+
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates libcurl4 libcurl4-openssl-dev libonig5 libonig-dev libpq5 libpq-dev \
-    && docker-php-ext-install -j"$(nproc)" curl mbstring opcache pdo_pgsql \
+    && apt-get install -y --no-install-recommends ca-certificates unzip libzip-dev libcurl4 libcurl4-openssl-dev libonig5 libonig-dev libpq5 libpq-dev \
+    && docker-php-ext-install -j"$(nproc)" curl mbstring opcache pdo_pgsql zip \
     && a2enmod headers rewrite \
     && sed -ri 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf \
     && sed -ri 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf \
-    && apt-get purge -y --auto-remove libcurl4-openssl-dev libonig-dev libpq-dev \
+    && apt-get purge -y --auto-remove libcurl4-openssl-dev libonig-dev libpq-dev libzip-dev \
     && rm -rf /var/lib/apt/lists/*
+
 
 WORKDIR /var/www/html
 
