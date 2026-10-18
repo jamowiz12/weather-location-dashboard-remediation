@@ -1,1 +1,25 @@
 
+name: Laravel Docker Build Diagnostics
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Laravel backend Docker image
+        run: |
+          docker build \
+            --progress=plain \
+            --no-cache \
+            --file backend/Dockerfile \
+            --tag weather-location-dashboard-api:test \
+            backend
